@@ -1,0 +1,100 @@
+<!doctype html>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,400i,700,300">
+<link rel="stylesheet" href="dist/style.css">
+<style>a { color: #986dda; }</style>
+<div id="app"></div>
+<script>
+const HANDLERS = [
+	{
+		method: 'GET',
+		url: '/wp-json/dones/v1/users',
+		response: [ {
+			id: 1,
+			name: 'Anonymous User',
+			avatars: {
+				30: 'http://www.gravatar.com/avatar/?d=identicon&s=30',
+				60: 'http://www.gravatar.com/avatar/?d=identicon&s=60',
+			},
+		} ],
+	},
+	{
+		method: 'GET',
+		url: '/wp-json/dones/v1/dones',
+		response: [],
+	},
+	{
+		method: 'POST',
+		url: '/wp-json/dones/v1/dones',
+		response: function( params ) {
+			return params.body;
+		},
+	},
+	{
+		method: '*',
+		url: '*',
+		response: function() {
+			return Promise.reject( new Error() );
+		},
+	},
+];
+
+window.fetch = function( path, params ) {
+	const method = params.method || 'GET';
+	path = path.split( '?' )[ 0 ];
+
+	let handler;
+	for ( let i = 0; i < HANDLERS.length; i++ ) {
+		handler = HANDLERS[ i ];
+
+		// Test method match, allow wildcard method
+		if ( handler.method !== '*' && handler.method !== method ) {
+			continue;
+		}
+
+		// Escape URL as regex, allowing wildcard path
+		let regex = handler.url
+			.replace( /[-[\]{}()+?.,\\^$|#\s]/g, '\\$&' )
+			.replace( '*', '.*' );
+
+		regex = new RegExp( regex );
+
+		if ( regex.test( path ) ) {
+			break;
+		}
+	}
+
+	let response = handler.response;
+
+	if ( 'function' === typeof response ) {
+		response = response( params );
+	}
+
+	if ( ! ( response instanceof Promise ) ) {
+		response = Promise.resolve( response );
+	}
+
+	return response.then( function( result ) {
+		// Form response as fetch Response object
+		return {
+			ok: true,
+			json: function() {
+				return Promise.resolve( result );
+			},
+			headers: [],
+		};
+	} );
+};
+
+window.dones = {
+	apiRoot: '/wp-json',
+	brandColor: '#986dda',
+	dateFormat: 'F j, Y',
+	gmtOffset: ( new Date() ).getTimezoneOffset() / -60,
+	i18n: {},
+	preload: {},
+	siteName: 'Dones',
+	siteUrl: window.location.origin,
+	userId: 1,
+};
+</script>
+<script src="dist/app.js"></script>
